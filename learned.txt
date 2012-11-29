@@ -1,0 +1,3 @@
+ * `zope` is a big deal for Python
+ * You can run `pydoc -g` to browse the documentation in a browser
+
