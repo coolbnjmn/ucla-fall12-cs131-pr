@@ -1,0 +1,12 @@
+#!/bin/bash
+wget http://pypi.python.org/packages/source/T/Twisted/Twisted-12.2.0.tar.bz2#md5=9a321b904d01efd695079f8484b37861
+tar -xvf Twisted-12.2.0.tar.bz2
+cd Twisted-12.2.0
+python setup.py build
+cd build
+mv lib* lib
+mv temp* temp
+mv scripts* bin
+cd ../
+mv build ../twisted-12.2.0
+cd ../
