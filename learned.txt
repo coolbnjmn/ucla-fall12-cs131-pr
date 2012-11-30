@@ -2,4 +2,8 @@
  * You can run `pydoc -g` to browse the documentation in a browser
 
 Report potential:
+ * How do you keep data consistent in the middle of a request?
+ * http://twistedmatrix.com/documents/current/core/howto/servers.html
+   * The Protocol class is instantiated every connection
+   * Protocol handles data in an asynchronous manner, as they arrive from the network
  * http://twistedmatrix.com/documents/12.2.0/api/twisted.internet.interfaces.IReactorThreads.html
