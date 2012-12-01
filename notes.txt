@@ -1,0 +1,4 @@
+Look at Python memory management
+Look at Python typing
+Look at threading
+Look at event driven stuff
