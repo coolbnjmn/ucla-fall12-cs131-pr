@@ -163,26 +163,26 @@ class Session(LineReceiver):
 			self.factory.users[client_name] = (client_location, client_time, system_time, tokens)
 			self.factory.logInfo('Updated client info: {0} {1} {2} {3}, {4}'.format(client_name, client_location, client_time, system_time, ' '.join(tokens)))
 
-		# send client information to peers
-		self.factory.logInfo('Number of peers: {0}'.format(len(self.factory.peers.keys())))
-		for peer_name in self.factory.peers.keys():
-			if peer_name == server_name:
-				continue
+			# send client information to peers
+			self.factory.logInfo('Number of peers: {0}'.format(len(self.factory.peers.keys())))
+			for peer_name in self.factory.peers.keys():
+				if peer_name == server_name:
+					continue
 
-			self.factory.logInfo('Sending location information to peer: {0}'.format(peer_name))
-			peer_info = self.factory.peers[peer_name]
-			peer_name, protocol, host_name, port_number = peer_info
-			self.factory.logInfo('Peer info: {0} {1} {2} {3}'.format(peer_name, protocol, host_name, port_number))
+				self.factory.logInfo('Sending location information to peer: {0}'.format(peer_name))
+				peer_info = self.factory.peers[peer_name]
+				peer_name, protocol, host_name, port_number = peer_info
+				self.factory.logInfo('Peer info: {0} {1} {2} {3}'.format(peer_name, protocol, host_name, port_number))
 
-			end_point = None
-			if protocol == 'tcp':
-				end_point = TCP4ClientEndpoint(reactor, host_name, port_number)
-				self.factory.logInfo('Endpoint created: {0!s}'.format(end_point))
+				end_point = None
+				if protocol == 'tcp':
+					end_point = TCP4ClientEndpoint(reactor, host_name, port_number)
+					self.factory.logInfo('Endpoint created: {0!s}'.format(end_point))
 
-			if not end_point == None:
-				self.factory.logInfo('Connecting to peer: {0} {1} {2} {3}'.format(peer_name, protocol, host_name, port_number))
-				connection = end_point.connect(self.factory)
-				connection.addCallback(send_to_peer, 'AT {0} {1} {2} {3} {4}'.format(self.factory.server_name, time_difference, client_name, client_location, client_posix_time))
+				if not end_point == None:
+					self.factory.logInfo('Connecting to peer: {0} {1} {2} {3}'.format(peer_name, protocol, host_name, port_number))
+					connection = end_point.connect(self.factory)
+					connection.addCallback(send_to_peer, 'AT {0} {1} {2} {3} {4}'.format(self.factory.server_name, time_difference, client_name, client_location, client_posix_time))
 
 	def handle_WHATSAT(self, command):
 		'''
