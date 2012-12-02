@@ -1,0 +1,19 @@
+#!/bin/bash
+
+echo "IAMAT kiwi.cs.ucla.edu +27.5916+086.5640 `date +%s`" | telnet localhost 12490
+sleep 1
+echo "WHATSAT kiwi.cs.ucla.edu 100 2" | telnet localhost 12490
+echo "WHATSAT kiwi.cs.ucla.edu 100 2" | telnet localhost 12491
+echo "WHATSAT kiwi.cs.ucla.edu 100 2" | telnet localhost 12492
+echo "WHATSAT kiwi.cs.ucla.edu 100 2" | telnet localhost 12493
+echo "WHATSAT kiwi.cs.ucla.edu 100 2" | telnet localhost 12494
+
+echo "IAMAT kiwi.cs.ucla.edu +43.2+123.0 `date +%s`" | telnet localhost 12494
+echo "IAMAT orange.cs.ucla.edu +42.1+121.3 `date +%s`" | telnet localhost 12493
+echo "IAMAT apple.cs.ucla.edu +45.8+123.6 `date +%s`" | telnet localhost 12492
+echo "IAMAT banana.cs.ucla.edu +44.4+126.5 `date +%s`" | telnet localhost 12491
+sleep 1
+echo "WHATSAT kiwi.cs.ucla.edu 100 2" | telnet localhost 12490
+echo "WHATSAT orange.cs.ucla.edu 100 2" | telnet localhost 12491
+echo "WHATSAT apple.cs.ucla.edu 100 2" | telnet localhost 12494
+echo "WHATSAT banana.cs.ucla.edu 100 2" | telnet localhost 12493
