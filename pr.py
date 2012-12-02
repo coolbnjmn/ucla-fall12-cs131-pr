@@ -30,13 +30,13 @@ class Session(LineReceiver):
 		'''
 		TODO DOCUMENTATION
 		'''
-		self.factory.logInfo('Connection made: {0!s}'.format(self))
+		self.factory.logInfo('Connection made: {0}'.format(self.transport.getHost()))
 
 	def connectionLost(self, reason):
 		'''
 		TODO DOCUMENTATION
 		'''
-		self.factory.logInfo('Connection lost: {0!s}'.format(self))
+		self.factory.logInfo('Connection lost.')
 
 	def lineReceived(self, message):
 		'''
@@ -66,27 +66,29 @@ class Session(LineReceiver):
 			self.handle_unknown_command(command)
 			return
 
-		command_name, client_name, location, posix_time = tokens
+		command_name, client_name, client_location, client_posix_time = tokens
 		self.factory.logInfo('Parsed client name: {0}'.format(client_name))
-		self.factory.logInfo('Parsed location: {0}'.format(location))
+		self.factory.logInfo('Parsed location: {0}'.format(client_location))
 
 		# TODO: Actually parse location, but unnecessary for prototype
+
 		try:
-			posix_time = float(posix_time)
-			command_time = datetime.datetime.utcfromtimestamp(posix_time)
+			client_posix_time = float(client_posix_time)
+			client_time = datetime.datetime.utcfromtimestamp(client_posix_time)
 		except Exception as e:
 			self.factory.logError('IAMAT command has malformed POSIX time: {0}'.format(command))
 			self.handle_unknown_command(command)
 			return
-		self.factory.logInfo('Parsed POSIX time: {0}'.format(command_time.isoformat()))
+		self.factory.logInfo('Parsed POSIX time: {0}'.format(client_time.isoformat()))
 
 		# calculate time difference
 		system_time = datetime.datetime.utcnow()
-		time_difference = system_time - command_time
+		time_difference = system_time - client_time
 		self.factory.logInfo('Calculated time difference: {0!r}'.format(time_difference.total_seconds()))
 
 		# store client information
-		self.factory.users[client_name] = (location, command_time, system_time, tokens)
+		self.factory.users[client_name] = (client_location, client_time, system_time, tokens)
+		self.factory.logInfo('Updated client info: {0} {1} {2} {3}, {4}'.format(client_name, client_location, client_time, system_time, ' '.join(tokens)))
 
 		# respond with client information
 		location_echo_message = 'AT {0} {1!r} {2}'.format(self.factory.server_name, time_difference.total_seconds(), ' '.join(tokens[1:]))
@@ -114,7 +116,73 @@ class Session(LineReceiver):
 		'''
 		TODO DOCUMENTATION
 		'''
-		pass
+		tokens = command.split()
+
+		if not len(tokens) == 6:
+			self.factory.logError('AT command malformed, number of tokens =/= 6: {0}'.format(command))
+			self.handle_unknown_command(command)
+			return
+
+		command_name, server_name, time_difference, client_name, client_location, client_posix_time = tokens
+
+		self.factory.logInfo('Parsed server name: {0}'.format(server_name))
+
+		try:
+			time_difference = float(time_difference)
+		except Exception as e:
+			self.factory.logError('AT command has malformed time difference: {0}'.format(command))
+			self.handle_unknown_command(command)
+			return
+		self.factory.logInfo('Parsed time difference: {0}'.format(time_difference))
+
+		self.factory.logInfo('Parsed client name: {0}'.format(client_name))
+
+		self.factory.logInfo('Parsed client location: {0}'.format(client_location))
+
+		try:
+			client_posix_time = float(client_posix_time)
+			client_time = datetime.datetime.utcfromtimestamp(client_posix_time)
+		except Exception as e:
+			self.factory.logError('AT command has malformed client time: {0}'.format(command))
+			self.handle_unknown_command(command)
+			return
+		self.factory.logInfo('Parsed client time: {0}'.format(client_time.isoformat()))
+
+		system_time = datetime.datetime.utcnow()
+
+		# check if the information is stale
+		update_user = True
+		if self.factory.users.has_key(client_name):
+			last_client_location, last_client_time, last_system_time, last_tokens = self.factory.users[client_name]
+			if last_client_time >= client_time:
+				self.factory.logInfo('Last client location time is equal or more recent: {0}, {1} >= {2}'.format(client_name, last_client_time, client_time))
+				update_user = False
+
+		# store client information
+		if update_user:
+			self.factory.users[client_name] = (client_location, client_time, system_time, tokens)
+			self.factory.logInfo('Updated client info: {0} {1} {2} {3}, {4}'.format(client_name, client_location, client_time, system_time, ' '.join(tokens)))
+
+		# send client information to peers
+		self.factory.logInfo('Number of peers: {0}'.format(len(self.factory.peers.keys())))
+		for peer_name in self.factory.peers.keys():
+			if peer_name == server_name:
+				continue
+
+			self.factory.logInfo('Sending location information to peer: {0}'.format(peer_name))
+			peer_info = self.factory.peers[peer_name]
+			peer_name, protocol, host_name, port_number = peer_info
+			self.factory.logInfo('Peer info: {0} {1} {2} {3}'.format(peer_name, protocol, host_name, port_number))
+
+			end_point = None
+			if protocol == 'tcp':
+				end_point = TCP4ClientEndpoint(reactor, host_name, port_number)
+				self.factory.logInfo('Endpoint created: {0!s}'.format(end_point))
+
+			if not end_point == None:
+				self.factory.logInfo('Connecting to peer: {0} {1} {2} {3}'.format(peer_name, protocol, host_name, port_number))
+				connection = end_point.connect(self.factory)
+				connection.addCallback(send_to_peer, 'AT {0} {1} {2} {3} {4}'.format(self.factory.server_name, time_difference, client_name, client_location, client_posix_time))
 
 	def handle_WHATSAT(self, command):
 		'''
@@ -217,6 +285,7 @@ class Session(LineReceiver):
 		'''
 		self.sendLine(message)
 		self.factory.logInfo('Sent message: {0}'.format(message))
+		self.transport.loseConnection()
 
 class SessionFactory(Factory):
 
