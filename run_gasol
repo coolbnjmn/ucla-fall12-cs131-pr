@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./lenv ipython --pdb pr.py -- gasol localhost 12493

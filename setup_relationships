@@ -1,0 +1,7 @@
+#!/bin/bash
+
+echo "PEER howard tcp localhost 12491" | telnet localhost 12490
+echo "PEER bryant tcp localhost 12492" | telnet localhost 12490
+echo "PEER howard tcp localhost 12491" | telnet localhost 12493
+echo "PEER bryant tcp localhost 12492" | telnet localhost 12493
+echo "PEER metta tcp localhost 12494" | telnet localhost 12492

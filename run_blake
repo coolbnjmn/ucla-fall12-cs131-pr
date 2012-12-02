@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./lenv ipython --pdb pr.py -- blake localhost 12490

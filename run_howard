@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./lenv ipython --pdb pr.py -- howard localhost 12491
