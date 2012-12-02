@@ -7,3 +7,10 @@ Report potential:
    * The Protocol class is instantiated every connection
    * Protocol handles data in an asynchronous manner, as they arrive from the network
  * http://twistedmatrix.com/documents/12.2.0/api/twisted.internet.interfaces.IReactorThreads.html
+ * http://effbot.org/pyfaq/what-kinds-of-global-value-mutation-are-thread-safe.htm
+ * http://docs.python.org/2/glossary.html#term-global-interpreter-lock
+ * http://morepypy.blogspot.com/2011/06/global-interpreter-lock-or-how-to-kill.html
+   * Jython gets rid of GIL, PyPy is trying to
+ * http://twistedmatrix.com/documents/current/api/twisted.internet.interfaces.IReactorProcess.spawnProcess.html
+ * http://twistedmatrix.com/documents/10.1.0/web/howto/web-in-60/asynchronous.html
+ * http://twistedmatrix.com/documents/8.1.0/api/twisted.internet.task.LoopingCall.html
