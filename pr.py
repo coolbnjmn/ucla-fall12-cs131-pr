@@ -337,7 +337,7 @@ class SessionFactory(Factory):
 		'''
 		TODO DOCUMENTATION
 		'''
-		message = '{0}: {1}'.format(datetime.datetime.utcnow().isoformat(), message)
+		message = '{0}: {1}: {2}'.format(self.server_name, datetime.datetime.utcnow().isoformat(), message)
 		print(message)
 		try:
 			self.log_stream.write(message+'\n')
