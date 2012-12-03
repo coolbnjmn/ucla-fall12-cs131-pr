@@ -1,0 +1,9 @@
+#!/bin/bash
+
+./run_blake &
+./run_bryant &
+./run_gasol &
+./run_howard &
+./run_metta &
+./setup_relationships
+jobs

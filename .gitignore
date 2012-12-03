@@ -3,3 +3,11 @@
 /twitty-twister
 *.log
 *.swp
+report.aux
+report.bbl
+report.bib.backup
+report.bib~
+report.blg
+report.latex.backup
+report.latex~
+
