@@ -45,7 +45,9 @@ To assist in evaluating Twisted and Python a simple prototype was rapidly develo
 \label{fig:prototype-topology}
 \end{figure}
 
-Handling client input was straightforward in thanks to the event driven structure of Twisted. Polling or thread handling is unnecessary as the {\tt twisted.internet.reactor} handles much of it. Implementation simply requires the inheritance of prototypical classes representing protocols (e.g. connections), a means of spawning protocols (factories), and then the definition of desired behavior encapsulated in a method whose arguments are the incoming data from the client. From there Python provides numerous means for parsing data, including built-in string and list manipulation. Here the use of Twisted shines in quickly getting development to the actual desired functionality with little boiler plate code. Python's maturity and flexibility also prove advantageous here with its numerous capabilities via built-in structures and standard packages.
+Handling client input was straightforward in thanks to the event driven structure of Twisted. Polling or thread handling is unnecessary as the {\tt twisted.internet.reactor} handles much of it. Implementation simply requires the inheritance of prototypical classes representing protocols (e.g. connections), a means of spawning protocols (factories), and then the definition of desired behavior encapsulated in a method whose arguments are the incoming data from the client. \\
+
+From there Python provides numerous means for parsing data, including built-in string and list manipulation. Here the use of Twisted shines in quickly getting development to the actual desired functionality with little boiler plate code. Python's maturity and flexibility also prove advantageous here with its numerous capabilities via built-in structures and standard packages. Also, Python's object model, where everything is an object and type handling is done with duck typing, makes it easy to both prototype code and develop abstract code that can be reused.
 
 \subsection{Simple Flooding Algorithm}
 
@@ -74,28 +76,23 @@ has not been designed for robust execution or even functionality. Instead it
 simply proves the ability to run multiple servers using Python and Twisted that
 can communicate with each other. It does not strictly adhere to good object-oriented design, don't-repeat-yourself principles (DRY), or other best practices.
 
-\section{Python}
+\section{CPython and the Global Interpreter Lock}
+\label{sec:gil}
 
 When discussing Python it is implicitly assumed that the discussion is in regards to CPython. This paper is no different, but an issue particular to CPython is relevant. Alternative implementations of Python exist and are discussed in Section~\ref{sec:alt-python}. As such, we will explicitly refer to CPython here. \\
 
-Part of our technical goals in selecting Twisted and CPython is parallelizability. Parallel software is generally executed using either multiple threads, multiple processes, or both. Threads can be considered light-weight processes that operate within a process, possibly under the control of the operating system \cite{website:wiki-thread}.
+Part of our technical goals in selecting Twisted and CPython is parallelizability. Parallel software is generally executed using either multiple threads, multiple processes, or both. Threads can be considered light-weight processes that operate within a process, possibly under the control of the operating system \cite{website:wiki-thread}. Threads can operate in multiple ways. They may very well be executed in parallel on a multi-core system such as a server, but they may also be executed in an interleaved fashion on a single-core system. \\
 
-\subsection{Processes Versus Threads}
+In CPython threads are unfortunately forced to operate in an interleaved fashion due to the global interpreter lock (GIL) \cite{website:understand-gil}. The GIL forces the interpreter to operate on only one thread at a time. Even though Python threads are true threads in an operating system sense, they are byte-code interpreted by the interpreter. As a result, the interpreter itself can be seen like a shared resource. A thread must acquire the GIL before it can be interpreted itself. Due to this implementation true parallel processing is unavailable via threads. Multiple processes may still run in parallel as each process can run an interpreter, but parallel processes are more difficult to manage compared to parallel threads due to inter-process communication. \\
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
-
-\subsection{Global Interpreter Lock}
-\label{sec:gil}
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
+The GIL limitation results in increased complexity if a server application is to take advantage of a multi-core system which is a commonplace arrangement in today's server architectures. \\
 
 \section{Twisted Revisited}
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
+Fortunately the application server herd construction allows a way around the limitations of the GIL. Applications running on separate servers can just as well operate as independent processes on the same server. Communication between processes can then be abstracted as communication between servers allowing for reuse of pre-built communication systems. Twisted's object-oriented design already achieves this communication abstraction. \\
 
-\subsection{Object-Oriented Design}
+An unfortunate side-effect of treating separate processes as separate servers, if minimal rewrite is desired, is the duplication of data in memory. If memory bottlenecks become an issue then additional complexity will have to be added to the application to handle shared data between processes which would result in special cases for interaction between processes versus between servers.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
 
 \subsection{Reactor}
 
@@ -116,26 +113,22 @@ implemented on the virtual machine rather than the operating system itself.
 Although these threads are lightweight, they appear to offer only a locking
 abstraction on top of regular threads. Regardless, both are based on threads
 rather than processes meaning they would not take full advantage of a
-multi-core server for parallel processing due to the GIL as previously discussed.
+multi-core server for parallel processing due to the GIL limitations as previously discussed.
 
 \section{Alternative Python Implementations}
 \label{sec:alt-python}
 
-Aside from alternatives to Twisted there are actually alternative implementations of Python. The standard implementation of Python is known as CPython. CPython, as its name suggests, is the Python language implemented in C as a bytecode interpreter. To address shortcomings of this implementation there are a number of alternative Python implementations such as Jython, PyPy, Stackless, and IronPython. Some of these alternatives are discussed below, including the shortcomings they intend to address.
+Aside from alternatives to Twisted there are actually alternative implementations of Python. The standard implementation of Python is known as CPython. CPython, as its name suggests, is the Python language implemented in C as a bytecode interpreter. To address shortcomings of this implementation there are a number of alternative Python implementations such as IronPython, Jython, PyPy, and Stackless. Notable alternatives are discussed below.
+
+\subsection{Stackless}
+
+Stackless is a Python implementation that is very thread-centric. It opts to make threaded programming in Python simpler while also providing cheap and lightweight threads \cite{website:stackless}. Although at face value this appears to provide for true parallel execution with Python, it is instead a trade off between GIL with its automatic cooperative threading and manually controlled threading. The serial execution on one CPU limitation is still present in Stackless. Instead Stackless makes threading very explicit which encourages more scalable code.
 
 \subsection{Jython}
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
 
 \subsection{IronPython}
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
-
-\subsection{Stackless}
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
-
-\subsection{PyPy}
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
 
@@ -171,6 +164,10 @@ the number of objects read.
 \end{itemize}
 
 This concludes the definitions tag.
+
+\section{Conclusion}
+
+For the creation of an application server herd the Twisted framework and Python look to be excellent candidates.
 
 {\footnotesize \bibliographystyle{acm}
 \bibliography{report.bib}}
