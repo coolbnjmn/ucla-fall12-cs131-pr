@@ -1,47 +1,17 @@
-% TEMPLATE for Usenix papers, specifically to meet requirements of
-%  USENIX '05
-% originally a template for producing IEEE-format articles using LaTeX.
-%   written by Matthew Ward, CS Department, Worcester Polytechnic Institute.
-% adapted by David Beazley for his excellent SWIG paper in Proceedings,
-%   Tcl 96
-% turned into a smartass generic template by De Clarke, with thanks to
-%   both the above pioneers
-% use at your own risk.  Complaints to /dev/null.
-% make it two column with no page numbering, default is 10 point
-
-% Munged by Fred Douglis <douglis@research.att.com> 10/97 to separate
-% the .sty file from the LaTeX source template, so that people can
-% more easily include the .sty file into an existing document.  Also
-% changed to more closely follow the style guidelines as represented
-% by the Word sample file. 
-
-% Note that since 2010, USENIX does not require endnotes. If you want
-% foot of page notes, don't include the endnotes package in the 
-% usepackage command, below.
-
-% This version uses the latex2e styles, not the very ancient 2.09 stuff.
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix,epsfig}
+\usepackage{url}
 \begin{document}
 
-%don't want date printed
 \date{}
 
-%make title bold and 14 pt font (Latex default is non-bold, 16 pt)
-\title{\Large \bf Wonderful : A Terrific Application and Fascinating Paper}
+\title{\Large \bf Viability of Twisted and Python for Application Server
+Herd Implementations}
 
-%for single author (just remove % characters)
 \author{
-{\rm Your N.\ Here}\\
-Your Institution
-\and
-{\rm Second Name}\\
-Second Institution
-% copy the following lines to add more authors
-% \and
-% {\rm Name}\\
-%Name Institution
-} % end author
+{\rm Viet T. Nguyen}\\
+University of California, Los Angeles
+}
 
 \maketitle
 
@@ -51,18 +21,29 @@ Second Institution
 
 
 \subsection*{Abstract}
-Your Abstract Text Goes Here.  Just a few facts.
-Whet our appetites.
+This paper provides a cursory look into the use of the Twisted framework, built
+on top of the Python language, to build application server herds with particular interest to language considerations such as type checking, memory management, and multithreading.
 
 \section{Introduction}
 
-A paragraph of text goes here.  Lots of text.  Plenty of interesting
-text. \\
+The motivation behind this look into the development of an application server
+herd framework comes from a desire at our company to build a ``new
+Wikimedia-style service designed for news.'' Due to differing requirements we
+sought an alternative to Wikimedia's LAMP platform (GNU/Linux, Apache, MySQL,
+and PHP). Our service intends to provide much more frequent updates, access
+via a variety of protocols, and a robustness towards increasing mobile traffic
+share. \\
+
+The requirements outlined for the service result in a number of high level technical desires. To avoid application server bottlenecks we intend to distribute the application servers. With distributed servers we require rapid diffusion of unstructured data via a flooding algorithm. Beyond data diffusion there are a number of ``-ility's'' we hope to achieve: maintainability, reliability, scalability, parallelizability. Of course from a cost perspective we would also like ease of implementation.
+
+\section{Twisted}
+
+One of the many options available to implement such a framework is Twisted. Twisted is an event-driven networking engine written in Python \cite{website:twisted-matrix}. Twisted shows promise because of its event driven, multi-process nature. \\
 
 \section{This is Another Section}
 
 Some embedded literal typset code might 
-look like the following :
+look like the following : \cite{website:fermentas-lambda}
 
 {\tt \small
 \begin{verbatim}
@@ -75,7 +56,7 @@ int wrap_fact(ClientData clientData,
         interp->result = "wrong # args";
         return TCL_ERROR;
     }
-    arg0 = atoi(argv[1]);
+    arg0 = atoi(argv[1o]);
     result = fact(arg0);
     sprintf(interp->result,"%d",result);
     return TCL_OK;
@@ -202,7 +183,7 @@ We've preserved some real ones in addition to the template-speak.
 After the bibliography you are DONE.
 
 {\footnotesize \bibliographystyle{acm}
-\bibliography{../common/bibliography}}
+\bibliography{report.bib}}
 
 
 \end{document}
