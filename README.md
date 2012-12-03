@@ -17,7 +17,7 @@ Each server can be run individually with their associated `bash` scripts:
 
 All of the servers can be run as jobs using the `run_all_servers` `bash` script.
 
-After the servers have been started, the network topology can be established with the `setup_relationships` `bash` script. This script acts as a sort of external party that tells the servers what their peers are. When a server A is made aware of a peer, server B, it attempts to connect with that peer so that peer, server B, will establish server A as its own peer. This is done by sending the `PEER` command via `telnet` (see `setup_relatoinships`).
+After the servers have been started, the network topology can be established with the `setup_relationships` `bash` script. This script acts as a sort of external party that tells the servers what their peers are. When a server A is made aware of a peer, server B, it attempts to connect with that peer so that peer, server B, will establish server A as its own peer. This is done by sending the `PEER` command via `telnet` (see `setup_relationships`).
 
 An example of the commands that can be sent after relationship establishment can be found in the `test_servers` `bash` script. Running this script establishes a user location and then makes a request from each server to verify that the user data propagated through the servers appropriately.
 
