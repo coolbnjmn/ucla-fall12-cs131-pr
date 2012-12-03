@@ -1,6 +1,7 @@
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix,epsfig}
 \usepackage{url}
+\usepackage{graphicx}
 \begin{document}
 
 \date{}
@@ -9,7 +10,7 @@
 Herd Implementations}
 
 \author{
-{\rm Viet T. Nguyen}\\
+{\rm Viet T. Nguyen} \\
 University of California, Los Angeles
 }
 
@@ -19,89 +20,126 @@ University of California, Los Angeles
 % Comment it out when you first submit the paper for review.
 \thispagestyle{empty}
 
-
 \subsection*{Abstract}
-This paper provides a cursory look into the use of the Twisted framework, built
-on top of the Python language, to build application server herds with particular interest to language considerations such as type checking, memory management, and multithreading.
+This paper provides a cursory look into the use of the Twisted framework, built on top of the Python language, to build application server herds with particular interest to language considerations such as type checking, memory management, and multithreading.
 
 \section{Introduction}
 
-The motivation behind this look into the development of an application server
-herd framework comes from a desire at our company to build a ``new
-Wikimedia-style service designed for news.'' Due to differing requirements we
-sought an alternative to Wikimedia's LAMP platform (GNU/Linux, Apache, MySQL,
-and PHP). Our service intends to provide much more frequent updates, access
-via a variety of protocols, and a robustness towards increasing mobile traffic
-share. \\
+The motivation for this research comes from a desire at our company to build a ``new Wikimedia-style service designed for news.'' Due to differing requirements we sought an alternative to Wikimedia's LAMP platform (GNU/Linux, Apache, MySQL, and PHP). Our service intends to provide much more frequent updates, access via a variety of protocols, and a robustness towards increasing mobile traffic share. \\
 
 The requirements outlined for the service result in a number of high level technical desires. To avoid application server bottlenecks we intend to distribute the application servers. With distributed servers we require rapid diffusion of unstructured data via a flooding algorithm. Beyond data diffusion there are a number of ``-ility's'' we hope to achieve: maintainability, reliability, scalability, parallelizability. Of course from a cost perspective we would also like ease of implementation.
 
 \section{Twisted}
 
-One of the many options available to implement such a framework is Twisted. Twisted is an event-driven networking engine written in Python \cite{website:twisted-matrix}. Twisted shows promise because of its event driven, multi-process nature. \\
+One of the many options available to implement such a framework is Twisted. Twisted is an event-driven networking engine written in Python \cite{website:twisted-matrix}. Twisted shows promise because of its event driven. It also contains means to spawn processes beyond using multiple threads, allowing us to overcome the Global Interpreter Lock which will be discussed later in Section~\ref{sec:gil}.
 
-\section{This is Another Section}
+\section{Prototype}
 
-Some embedded literal typset code might 
-look like the following : \cite{website:fermentas-lambda}
+To assist in evaluating Twisted and Python a simple prototype was rapidly developed. The prototype implements a single application run in multiple instances to mimic multiple servers each running the application. They communicate with each other via TCP. The servers as a whole comprise a service. A client expects to be able to send data to the service and then request something based on the data it provided the service. Since a client does not necssarily interact with the same server the servers must propagate the client's data to the other servers in the service. The topology of prototype servers is given by Figure~\ref{fig:prototype-topology}. More information about the design of the prototype are given by \cite{website:prompt}. \\
 
-{\tt \small
-\begin{verbatim}
-int wrap_fact(ClientData clientData,
-              Tcl_Interp *interp,
-              int argc, char *argv[]) {
-    int result;
-    int arg0;
-    if (argc != 2) {
-        interp->result = "wrong # args";
-        return TCL_ERROR;
-    }
-    arg0 = atoi(argv[1o]);
-    result = fact(arg0);
-    sprintf(interp->result,"%d",result);
-    return TCL_OK;
-}
-\end{verbatim}
-}
-
-Now we're going to cite somebody.  Watch for the cite tag.
-Here it comes~\cite{Chaum1981,Diffie1976}.  The tilde character (\~{})
-in the source means a non-breaking space.  This way, your reference will
-always be attached to the word that preceded it, instead of going to the
-next line.
-
-\section{This Section has SubSections}
-\subsection{First SubSection}
-
-Here's a typical figure reference.  The figure is centered at the
-top of the column.  It's scaled.  It's explicitly placed.  You'll
-have to tweak the numbers to get what you want.\\
-
-% you can also use the wonderful epsfig package...
 \begin{figure}[t]
 \begin{center}
-\begin{picture}(300,150)(0,200)
-\put(-15,-30){\special{psfile = fig1.ps hscale = 50 vscale = 50}}
-\end{picture}\\
+\includegraphics[width=\linewidth]{topology.png}
 \end{center}
-\caption{Wonderful Flowchart}
+\caption{Topology of the network used to test the prototype.}
+\label{fig:prototype-topology}
 \end{figure}
 
-This text came after the figure, so we'll casually refer to Figure 1
-as we go on our merry way.
+Handling client input was straightforward in thanks to the event driven structure of Twisted. Polling or thread handling is unnecessary as the {\tt twisted.internet.reactor} handles much of it. Implementation simply requires the inheritance of prototypical classes representing protocols (e.g. connections), a means of spawning protocols (factories), and then the definition of desired behavior encapsulated in a method whose arguments are the incoming data from the client. From there Python provides numerous means for parsing data, including built-in string and list manipulation. Here the use of Twisted shines in quickly getting development to the actual desired functionality with little boiler plate code. Python's maturity and flexibility also prove advantageous here with its numerous capabilities via built-in structures and standard packages.
 
-\subsection{New Subsection}
+\subsection{Simple Flooding Algorithm}
 
-It can get tricky typesetting Tcl and C code in LaTeX because they share
-a lot of mystical feelings about certain magic characters.  You
-will have to do a lot of escaping to typeset curly braces and percent
-signs, for example, like this:
-``The {\tt \%module} directive
-sets the name of the initialization function.  This is optional, but is
-recommended if building a Tcl 7.5 module.
-Everything inside the {\tt \%\{, \%\}}
-block is copied directly into the output. allowing the inclusion of
-header files and additional C code." \\
+Part of the prototype functionality requires that servers communicate in an intra-service manner to keep client data consistent across servers. To achieve this a simple flooding algorithm was implemented. Upon receiving of new client data the receiving server updates its internal store of client data (in memory) before forwarding the data to all of its known peers. When a peer receives this data it then updates its internal store of client data before proceding to forward the data to all of its known peers sans the peer it received the data from. To prevent infinite recursive forwarding a peer checks the time stamp of the data and proceeds only if the time stamp is newer than the data in its local store. \\
+
+Implementation is relatively straightforward except for having to understand the multi-layered callbacks required to establish a temporary connection to send data from server to server. Receiving and parsing of data from another server follows the same steps as receiving and parsing client data. In communicating with another server, however, and end point needs to be instantiated (e.g. {\tt TCP4ClientEndpoint}), a connection made via the end point, and a call back provided to the connection. The connection then executes the callback providing the callback with the protocol that can then be used to actually send the data. As a result the method that performs data communication is separated from the location of desired communication by two object instantiations and a callback that must be executed by the reactor. When implemented the process works fine, but maintainability and readability suffers. However, in an event driven framework this problem is common.
+
+\subsection{Post-Mortem}
+
+The Twisted framework and Python very much succeeded in allowing us to quickly develop the prototype. It is our feeling that this setup can be used to develop our product in a scalable fashion. \\
+
+Access via a variety of protocols is readily available due to the object-oriented design of the framework and its built-in implementation of numerous other protocols that can, more or less, be swapped with the instantiations used in the prototype. It appears to require little additional work to have servers communicate over {\tt ssh} or UDP. The same applies for client communication. The design of the server herd addresses the concern for handling mobile traffic. \\
+
+However, there are caveats to using Twisted and Python. An understanding of Python's multithreading implementation and memory management are important to avoiding development of software that scales and performs poorly. Some of these concerns are discussed in following sections.
+
+\subsection{Source Code}
+
+Source code for the prototype can be found at the following URL:
+\begin{center}
+{\tt \small https://github.com/vietjtnguyen/\\
+\noindent ucla-fall12-cs131-pr} \\
+\end{center}
+
+Unfortunately the prototype lives up to its name. The prototype
+has not been designed for robust execution or even functionality. Instead it
+simply proves the ability to run multiple servers using Python and Twisted that
+can communicate with each other. It does not strictly adhere to good object-oriented design, don't-repeat-yourself principles (DRY), or other best practices.
+
+\section{Python}
+
+When discussing Python it is implicitly assumed that the discussion is in regards to CPython. This paper is no different, but an issue particular to CPython is relevant. Alternative implementations of Python exist and are discussed in Section~\ref{sec:alt-python}. As such, we will explicitly refer to CPython here. \\
+
+Part of our technical goals in selecting Twisted and CPython is parallelizability. Parallel software is generally executed using either multiple threads, multiple processes, or both. Threads can be considered light-weight processes that operate within a process, possibly under the control of the operating system \cite{website:wiki-thread}.
+
+\subsection{Processes Versus Threads}
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
+
+\subsection{Global Interpreter Lock}
+\label{sec:gil}
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
+
+\section{Twisted Revisited}
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
+
+\subsection{Object-Oriented Design}
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
+
+\subsection{Reactor}
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
+
+\subsection{Processes}
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
+
+\section{Alternative Event Driven Python Frameworks}
+
+Beyond the Twisted framework there are a number of other event based frameworks
+available for Python. These include gevent and Eventlet. \\
+
+Both gevent and Eventlet operate based on green threads (greenlets in the case
+of gevent). These green threads are psuedo-threads in that they are threads
+implemented on the virtual machine rather than the operating system itself.
+Although these threads are lightweight, they appear to offer only a locking
+abstraction on top of regular threads. Regardless, both are based on threads
+rather than processes meaning they would not take full advantage of a
+multi-core server for parallel processing due to the GIL as previously discussed.
+
+\section{Alternative Python Implementations}
+\label{sec:alt-python}
+
+Aside from alternatives to Twisted there are actually alternative implementations of Python. The standard implementation of Python is known as CPython. CPython, as its name suggests, is the Python language implemented in C as a bytecode interpreter. To address shortcomings of this implementation there are a number of alternative Python implementations such as Jython, PyPy, Stackless, and IronPython. Some of these alternatives are discussed below, including the shortcomings they intend to address.
+
+\subsection{Jython}
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
+
+\subsection{IronPython}
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
+
+\subsection{Stackless}
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
+
+\subsection{PyPy}
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin facilisis elementum sagittis. Praesent mattis augue in nulla ornare vitae dignissim nibh pharetra. Ut augue diam, mollis id porta vitae, convallis quis nisl. Curabitur eu nunc ac est faucibus elementum. Maecenas venenatis dictum iaculis. Phasellus ultrices, metus eget mattis adipiscing, est lorem molestie magna, eu bibendum sem turpis in mauris.
+
+\section{Blah Below}
 
 Sometimes you want to really call attention to a piece of text.  You
 can center it in the column like this:
@@ -114,7 +152,6 @@ and people will really notice it.\\
 The noindent at the start of this paragraph makes it clear that it's
 a continuation of the preceding text, not a new para in its own right.
 
-
 Now this is an ingenious way to get a forced space.
 {\tt Real~$*$} and {\tt double~$*$} are equivalent. 
 
@@ -126,65 +163,17 @@ of centering it, we noindent and bold it.\\
 
 And here we have made an indented para like a definition tag (dt)
 in HTML.  You don't need a surrounding list macro pair.
+
 \begin{itemize}
 \item[]  {\tt fread} reads from {\tt stream} into the array {\tt ptr} at
 most {\tt nobj} objects of size {\tt size}.   {\tt fread} returns
 the number of objects read. 
 \end{itemize}
+
 This concludes the definitions tag.
-
-\subsection{How to Build Your Paper}
-
-You have to run {\tt latex} once to prepare your references for
-munging.  Then run {\tt bibtex} to build your bibliography metadata.
-Then run {\tt latex} twice to ensure all references have been resolved.
-If your source file is called {\tt usenixTemplate.tex} and your {\tt
-  bibtex} file is called {\tt usenixTemplate.bib}, here's what you do:
-{\tt \small
-\begin{verbatim}
-latex usenixTemplate
-bibtex usenixTemplate
-latex usenixTemplate
-latex usenixTemplate
-\end{verbatim}
-}
-
-
-\subsection{Last SubSection}
-
-Well, it's getting boring isn't it.  This is the last subsection
-before we wrap it up.
-
-\section{Acknowledgments}
-
-A polite author always includes acknowledgments.  Thank everyone,
-especially those who funded the work. 
-
-\section{Availability}
-
-It's great when this section says that MyWonderfulApp is free software, 
-available via anonymous FTP from
-
-\begin{center}
-{\tt ftp.site.dom/pub/myname/Wonderful}\\
-\end{center}
-
-Also, it's even greater when you can write that information is also 
-available on the Wonderful homepage at 
-
-\begin{center}
-{\tt http://www.site.dom/\~{}myname/SWIG}
-\end{center}
-
-Now we get serious and fill in those references.  Remember you will
-have to run latex twice on the document in order to resolve those
-cite tags you met earlier.  This is where they get resolved.
-We've preserved some real ones in addition to the template-speak.
-After the bibliography you are DONE.
 
 {\footnotesize \bibliographystyle{acm}
 \bibliography{report.bib}}
-
 
 \end{document}
 

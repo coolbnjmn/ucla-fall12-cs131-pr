@@ -3,7 +3,7 @@
 
 ## Project
 
-See [http://cs.ucla.edu/classes/fall12/cs131/hw/pr.html] for prompt.
+See http://cs.ucla.edu/classes/fall12/cs131/hw/pr.html for prompt.
 
 ## References
 
